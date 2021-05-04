@@ -1,0 +1,88 @@
+#Packete installieren und laden
+install.packages("tidyverse")
+install.packages("sf")
+install.packages("readxl")
+install.packages("ggforce")
+library(tidyverse)
+library(sf)
+library(readxl)
+library(ggforce)
+
+#Unfallatlas Datensatz im CSV-Format laden und filtern
+"Data Science SoSe 2021/Exposé/Daten/Datensatz.xlsx" %>%
+  read_excel() %>%
+  filter(IstRad != 0, ULAND==6, UREGBEZ==4, UKREIS==12) -> fahrradunfaelle_fr
+
+"Data Science SoSe 2021/Exposé/Daten/Datensatz.xlsx" %>%
+  read_excel() %>%
+  filter(IstRad != 0, ULAND==5, UREGBEZ==5, UKREIS==15) -> fahrradunfaelle_mu
+
+st_crs(fahrradunfaelle_fr)
+summary(fahrradunfaelle_fr)
+
+ggplot(fahrradunfaelle_fr, aes(UWOCHENTAG)) +
+  geom_histogram()
+
+#Unfallatlas Datensatz im shapfile-Format laden und filtern
+"Data Science SoSe 2021/Exposé/Daten/Unfallatlas/Unfallorte2019_LinRef.shp" %>%
+  st_read() %>%
+  filter(IstRad != 0, ULAND=="06", UREGBEZ=="4", UKREIS=="12") -> test_fr
+
+"Data Science SoSe 2021/Exposé/Daten/Unfallatlas/Unfallorte2019_LinRef.shp" %>%
+  st_read() %>%
+  filter(IstRad != 0, ULAND=="05", UREGBEZ=="5", UKREIS=="15") -> test_mu
+
+st_crs(test_fr)
+summary(test_fr)
+
+##Unfallatlas Datensatz im shapfile-Format umwandeln von EPSG 25832 in EPSG 4326
+test_fr %>%
+  st_transform(4326) -> test_cord
+
+st_crs(test_cord)
+
+#OSM Strassen
+"Data Science SoSe 2021/Exposé/Daten/OSM/strassen_ffm.geojson" %>%
+  st_read() -> strassen_ffm
+
+st_crs(strassen_ffm)
+
+strassen_ffm %>%
+  ggplot() +
+  geom_sf(size=0.05)
+
+#OSM Radwege
+"Data Science SoSe 2021/Exposé/Daten/OSM/radwege_ffm.geojson" %>%
+  st_read() -> radwege_ffm
+
+st_crs(radwege_ffm)
+
+radwege_ffm %>%
+  ggplot() +
+  geom_sf()
+
+#Stadtteile FFM
+"Data Science SoSe 2021/Exposé/Daten/stadtteile_frankfurt/Stadtteile_Frankfurt_am_Main.shp" %>%
+  st_read() -> stadtteile_ffm
+
+st_crs(stadtteile_ffm)
+
+##Umwandlung des Referenzsystems
+stadtteile_ffm %>%
+  st_transform(4326) -> stadtteile_ffm_geo
+
+st_crs(stadtteile_ffm_geo)
+
+
+#Frankfurter Stadtteile und Radwege plotten
+ggplot() +
+  geom_sf(data=strassen_ffm, size=0.5) +
+  geom_sf(data=test_fr, color="red", size=1) +
+  #facet_zoom(xlim = c(8.65, 8.75))
+
+#Choroplethenkarte
+stadtteile_ffm_geo %>%
+  st_covers(test_cord) %>%
+  lengths() -> stadtteile_ffm$anzahl_unfaelle
+
+#Punktdiagramm mit verschiedenen Symbolen (Unfallschwere)
